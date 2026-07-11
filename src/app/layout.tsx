@@ -36,11 +36,7 @@ interface RootLayoutProps {
  * Temporary mock user.
  * Better Auth যুক্ত করার পরে এটি remove করা হবে।
  */
-const mockUser: NavbarUser | null = {
-  name: "Ayesha Rahman",
-  email: "ayesha@example.com",
-  role: "property-holder",
-};
+
 
 export default function RootLayout({
   children,
@@ -51,7 +47,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable}`}
     >
       <body className="flex min-h-screen flex-col bg-white text-slate-900 antialiased">
-        <AppNavbar user={mockUser} />
+        <AppNavbar />
 
         <main className="flex-1">{children}</main>
         <AppFooter />
