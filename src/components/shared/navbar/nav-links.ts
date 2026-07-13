@@ -65,12 +65,12 @@ export const roleNavItems: Record<
     },
     {
       label: "Add Property",
-      href: "/items/add",
+      href: "/properties/add",
       icon: HousePlus,
     },
     {
       label: "Manage",
-      href: "/items/manage",
+      href: "/properties/manage",
       icon: ListChecks,
     },
   ],

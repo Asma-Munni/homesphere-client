@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "react-hot-toast";
 
 
 
@@ -47,10 +48,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable}`}
     >
       <body className="flex min-h-screen flex-col bg-white text-slate-900 antialiased">
+        
         <AppNavbar />
 
         <main className="flex-1">{children}</main>
         <AppFooter />
+        <Toaster position="top-right" />
       </body>
     </html>
   );

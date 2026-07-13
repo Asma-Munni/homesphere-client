@@ -44,11 +44,11 @@ const userLinks = [
   },
   {
     label: "Add Property",
-    href: "/items/add",
+    href: "/properties/add",
   },
   {
     label: "Manage Property",
-    href: "/items/manage",
+    href: "/properties/manage",
   },
 ];
 
@@ -109,7 +109,7 @@ className="flex items-center gap-3"
 <div className="relative size-10 overflow-hidden rounded-xl">
 
 <Image
-src="/Images/logo-homsphere.png"
+src="/Images/logo-homesphere.png"
 alt="HomeSphere Logo"
 fill
 priority
