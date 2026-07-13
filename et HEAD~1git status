@@ -1,0 +1,6 @@
+[33m1645802[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat: setup express backend with mongodb and property api
+[33m077332a[m feat: add login page with better auth integration
+[33mad30d8a[m feat: setup better auth signup with mongodb user registration
+[33md853232[m feat: configure better auth authentication system
+[33mf1a4063[m feat: add navbar footer hero slider and static homepage sections
+[33m6bc1d42[m Initial commit from Create Next App
