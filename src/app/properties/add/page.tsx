@@ -2,9 +2,22 @@
 
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { useSession } from "@/lib/auth-client";
 
 
 export default function AddPropertyPage() {
+
+  const { data } = useSession();
+
+
+const userId =
+data?.session?.userId;
+
+
+console.log(
+  "USER ID:",
+  userId
+);
 
 
   const [formData, setFormData] = useState({
@@ -79,40 +92,114 @@ export default function AddPropertyPage() {
 
 
 
-  const uploadImage = async()=>{
+ const uploadImage = async()=>{
 
 
-    if(!imageFile){
+  if(!imageFile){
+    return "";
+  }
 
-      return "";
 
+  const formData = new FormData();
+
+
+  formData.append(
+    "image",
+    imageFile
+  );
+
+
+  const res =
+  await fetch(
+    "http://localhost:5000/api/upload",
+    {
+      method:"POST",
+      body:formData,
     }
+  );
+
+
+  const data =
+  await res.json();
+
+
+  return data.url;
+
+};
 
 
 
-    const uploadData =
-      new FormData();
+const handleSubmit = async (
+  e: React.FormEvent
+) => {
+
+  e.preventDefault();
 
 
+  if(!userId){
 
-    uploadData.append(
-      "image",
-      imageFile
+    toast.error(
+      "Please login first"
     );
+
+    return;
+
+  }
+
+
+  try{
+
+
+    setLoading(true);
+
+
+
+    const imageUrl =
+      await uploadImage();
+
+
+
+    const propertyData = {
+
+      ...formData,
+
+      image:imageUrl,
+
+      ownerId:userId,
+
+    };
+
+
+
+    console.log(
+      "FINAL PROPERTY DATA:",
+      propertyData
+    );
+
 
 
 
     const res =
       await fetch(
-        "http://localhost:5000/api/upload",
+        "http://localhost:5000/api/properties",
         {
 
           method:"POST",
 
-          body:uploadData,
+          headers:{
+
+            "Content-Type":
+            "application/json",
+
+          },
+
+
+          body:
+          JSON.stringify(propertyData),
 
         }
       );
+
 
 
 
@@ -121,146 +208,73 @@ export default function AddPropertyPage() {
 
 
 
-    return data.url;
 
+    if(data.success){
 
-  };
 
-
-
-
-
-
-
-  const handleSubmit = async(
-    e: React.FormEvent
-  )=>{
-
-
-    e.preventDefault();
-
-
-    try{
-
-
-      setLoading(true);
-
-
-
-      const imageUrl =
-        await uploadImage();
-
-
-
-
-      const res =
-        await fetch(
-          "http://localhost:5000/api/properties",
-          {
-
-            method:"POST",
-
-
-            headers:{
-
-              "Content-Type":
-              "application/json",
-
-            },
-
-
-            body:
-            JSON.stringify({
-
-              ...formData,
-
-              image:imageUrl,
-
-            }),
-
-          }
-        );
-
-
-
-
-      const data =
-        await res.json();
-
-
-
-
-      if(data.success){
-
-
-        toast.success(
-          "Property added successfully!"
-        );
-
-
-
-        setFormData({
-
-          title:"",
-          shortDescription:"",
-          description:"",
-          price:"",
-          location:"",
-          category:"",
-          bedrooms:"",
-          bathrooms:"",
-
-        });
-
-
-
-        setImageFile(null);
-
-        setPreview("");
-
-      }
-
-
-      else{
-
-        toast.error(
-          "Failed to add property"
-        );
-
-      }
-
-
-
-    }
-
-
-    catch(error){
-
-
-      console.log(error);
-
-
-      toast.error(
-        "Something went wrong!"
+      toast.success(
+        "Property added successfully!"
       );
 
 
+
+      setFormData({
+
+        title:"",
+        shortDescription:"",
+        description:"",
+        price:"",
+        location:"",
+        category:"",
+        bedrooms:"",
+        bathrooms:"",
+
+      });
+
+
+
+      setImageFile(null);
+
+      setPreview("");
+
+    }
+
+    else{
+
+      toast.error(
+        "Failed to add property"
+      );
+
     }
 
 
-    finally{
 
-      setLoading(false);
+  }
 
-    }
-
-
-  };
+  catch(error){
 
 
+    console.log(
+      "ADD PROPERTY ERROR:",
+      error
+    );
 
 
+    toast.error(
+      "Something went wrong"
+    );
 
+
+  }
+
+  finally{
+
+    setLoading(false);
+
+  }
+
+
+};
 
 
 return (

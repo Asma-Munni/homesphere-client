@@ -65,12 +65,18 @@ const menuItems = {
     },
     {
       title: "Add Property",
-      href: "/items/add",
+      href: "/properties/add",
       icon: PlusCircle,
     },
     {
+  title:"My Properties",
+  href:"/dashboard/holder/properties",
+  icon: Building2,
+    
+},
+    {
       title: "Manage Property",
-      href: "/items/manage",
+      href: "/properties/manage",
       icon: Building2,
     },
   ],

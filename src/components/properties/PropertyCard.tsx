@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 
 interface Property {
@@ -124,6 +125,22 @@ className="object-cover"
 🚿 {property.bathrooms} Bathrooms
 
 </div>
+
+
+
+
+
+<Link
+
+href={`/properties/${property._id}`}
+
+className="mt-4 block rounded-xl bg-teal-700 px-4 py-3 text-center font-semibold text-white transition hover:bg-teal-800"
+
+>
+
+View Details
+
+</Link>
 
 
 

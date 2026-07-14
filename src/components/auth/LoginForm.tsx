@@ -17,7 +17,7 @@ import { authClient } from "@/lib/auth-client";
 
 
 export default function LoginForm() {
-
+ 
 
   const router = useRouter();
 
@@ -64,93 +64,116 @@ export default function LoginForm() {
 
 
 
-  const handleLogin =
-  async(
-    e:React.FormEvent
-  )=>{
+  const handleLogin = async (
+  e: React.FormEvent<HTMLFormElement>
+) => {
+  e.preventDefault();
 
-    e.preventDefault();
+  setError("");
 
+  if (!formData.email || !formData.password) {
+    setError("Please enter email and password");
+    return;
+  }
 
-    setError("");
+  try {
+    setLoading(true);
 
+    // Better Auth login
+    const loginResult = await authClient.signIn.email({
+      email: formData.email,
+      password: formData.password,
+    });
 
-
-    if(
-      !formData.email ||
-      !formData.password
-    ){
-
+    if (loginResult.error) {
       setError(
-        "Please enter email and password"
+        loginResult.error.message ??
+          "Invalid email or password"
       );
-
       return;
-
     }
 
+    // Better Auth session
+    const sessionResult =
+      await authClient.getSession();
 
+    console.log(
+      "FULL SESSION RESULT:",
+      sessionResult
+    );
 
-    try{
+    const userId =
+      sessionResult.data?.session?.userId;
 
+    console.log("SESSION USER ID:", userId);
 
-      setLoading(true);
-
-
-
-      const {error} =
-      await authClient.signIn.email({
-
-        email:
-        formData.email,
-
-
-        password:
-        formData.password,
-
-
-        callbackURL:"/",
-
-      });
-
-
-
-      if(error){
-
-        setError(
-          error.message ??
-          "Invalid credentials"
-        );
-
-        return;
-
-      }
-
-
-
-      router.push("/");
-
-
-      router.refresh();
-
-
-
-    }
-    catch{
-
-      setError(
-        "Something went wrong. Try again."
+    if (!userId) {
+      throw new Error(
+        "User ID was not found in session"
       );
-
-    }
-    finally{
-
-      setLoading(false);
-
     }
 
+    // Backend JWT endpoint
+    const tokenResponse = await fetch(
+      "http://localhost:5000/api/auth/token",
+      {
+        method: "POST",
 
-  };
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          userId,
+        }),
+      }
+    );
+
+    const tokenData =
+      await tokenResponse.json();
+
+    console.log(
+      "TOKEN RESPONSE:",
+      tokenData
+    );
+
+    if (!tokenResponse.ok) {
+      throw new Error(
+        tokenData.message ??
+          "JWT generation failed"
+      );
+    }
+
+    if (!tokenData.success || !tokenData.token) {
+      throw new Error(
+        "Backend did not return a valid token"
+      );
+    }
+
+    localStorage.setItem(
+      "token",
+      tokenData.token
+    );
+
+    console.log(
+      "SAVED JWT:",
+      localStorage.getItem("token")
+    );
+
+    router.push("/");
+    router.refresh();
+  } catch (error) {
+    console.error("LOGIN ERROR:", error);
+
+    setError(
+      error instanceof Error
+        ? error.message
+        : "Something went wrong. Try again."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
 
 

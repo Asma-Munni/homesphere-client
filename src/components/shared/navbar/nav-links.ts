@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Building2,
   CircleHelp,
   Contact,
@@ -47,12 +48,12 @@ export const roleNavItems: Record<
   tenant: [
     {
       label: "Dashboard",
-      href: "/dashboard",
+      href: "/dashboard/tenant",
       icon: LayoutDashboard,
     },
     {
       label: "Favorites",
-      href: "/dashboard/favorites",
+      href: "/dashboard/tenant/favorites",
       icon: Heart,
     },
   ],
@@ -60,7 +61,7 @@ export const roleNavItems: Record<
   "property-holder": [
     {
       label: "Dashboard",
-      href: "/dashboard",
+      href: "/dashboard/holder",
       icon: LayoutDashboard,
     },
     {
@@ -69,8 +70,8 @@ export const roleNavItems: Record<
       icon: HousePlus,
     },
     {
-      label: "Manage",
-      href: "/properties/manage",
+      label: "Manage Properties",
+      href: "/dashboard/holder/properties",
       icon: ListChecks,
     },
   ],
@@ -78,22 +79,27 @@ export const roleNavItems: Record<
   admin: [
     {
       label: "Dashboard",
-      href: "/dashboard",
+      href: "/dashboard/admin",
       icon: LayoutDashboard,
     },
     {
       label: "Users",
-      href: "/dashboard/users",
+      href: "/dashboard/admin/users",
       icon: Users,
     },
     {
       label: "Properties",
-      href: "/dashboard/properties",
+      href: "/dashboard/admin/properties",
       icon: Building2,
     },
     {
+      label: "Statistics",
+      href: "/dashboard/admin/statistics",
+      icon: BarChart3,
+    },
+    {
       label: "Settings",
-      href: "/dashboard/settings",
+      href: "/dashboard/admin/settings",
       icon: Settings,
     },
   ],
