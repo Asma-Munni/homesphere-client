@@ -74,11 +74,7 @@ const menuItems = {
   icon: Building2,
     
 },
-    {
-      title: "Manage Property",
-      href: "/properties/manage",
-      icon: Building2,
-    },
+    
   ],
 };
 

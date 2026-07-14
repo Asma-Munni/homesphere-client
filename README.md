@@ -184,7 +184,7 @@ An admin can manage platform users, review all properties, delete inappropriate 
 
 ```text
 /dashboard/holder
-/dashboard/holder/items/add
+/properties/add
 /dashboard/holder/properties
 /profile
 ```
