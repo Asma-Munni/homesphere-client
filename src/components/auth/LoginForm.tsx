@@ -14,6 +14,11 @@ import {
 
 import { authClient } from "@/lib/auth-client";
 
+const DEMO_CREDENTIALS = {
+  email: "demo@homesphere.com",
+  password: "Demo1234",
+};
+
 
 
 export default function LoginForm() {
@@ -64,14 +69,13 @@ export default function LoginForm() {
 
 
 
-  const handleLogin = async (
-  e: React.FormEvent<HTMLFormElement>
+ const performLogin = async (
+  email: string,
+  password: string
 ) => {
-  e.preventDefault();
-
   setError("");
 
-  if (!formData.email || !formData.password) {
+  if (!email.trim() || !password) {
     setError("Please enter email and password");
     return;
   }
@@ -80,32 +84,25 @@ export default function LoginForm() {
     setLoading(true);
 
     // Better Auth login
-    const loginResult = await authClient.signIn.email({
-      email: formData.email,
-      password: formData.password,
-    });
+    const loginResult =
+      await authClient.signIn.email({
+        email: email.trim(),
+        password,
+      });
 
     if (loginResult.error) {
-      setError(
+      throw new Error(
         loginResult.error.message ??
           "Invalid email or password"
       );
-      return;
     }
 
-    // Better Auth session
+    // Get Better Auth session
     const sessionResult =
       await authClient.getSession();
 
-    console.log(
-      "FULL SESSION RESULT:",
-      sessionResult
-    );
-
     const userId =
       sessionResult.data?.session?.userId;
-
-    console.log("SESSION USER ID:", userId);
 
     if (!userId) {
       throw new Error(
@@ -113,7 +110,7 @@ export default function LoginForm() {
       );
     }
 
-    // Backend JWT endpoint
+    // Generate backend JWT
     const tokenResponse = await fetch(
       "http://localhost:5000/api/auth/token",
       {
@@ -132,38 +129,30 @@ export default function LoginForm() {
     const tokenData =
       await tokenResponse.json();
 
-    console.log(
-      "TOKEN RESPONSE:",
-      tokenData
-    );
-
-    if (!tokenResponse.ok) {
+    if (
+      !tokenResponse.ok ||
+      !tokenData.success ||
+      !tokenData.token
+    ) {
       throw new Error(
         tokenData.message ??
           "JWT generation failed"
       );
     }
 
-    if (!tokenData.success || !tokenData.token) {
-      throw new Error(
-        "Backend did not return a valid token"
-      );
-    }
-
+    // Save custom JWT
     localStorage.setItem(
       "token",
       tokenData.token
     );
 
-    console.log(
-      "SAVED JWT:",
-      localStorage.getItem("token")
-    );
-
-    router.push("/");
+    router.replace("/");
     router.refresh();
   } catch (error) {
-    console.error("LOGIN ERROR:", error);
+    console.error(
+      "LOGIN ERROR:",
+      error
+    );
 
     setError(
       error instanceof Error
@@ -173,6 +162,32 @@ export default function LoginForm() {
   } finally {
     setLoading(false);
   }
+};
+
+const handleLogin = async (
+  e: React.FormEvent<HTMLFormElement>
+) => {
+  e.preventDefault();
+
+  await performLogin(
+    formData.email,
+    formData.password
+  );
+};
+
+const handleDemoLogin = async () => {
+  setFormData(
+    DEMO_CREDENTIALS
+  );
+
+  /*
+    formData update হওয়ার অপেক্ষা না করে
+    সরাসরি demo credentials পাঠানো হচ্ছে।
+  */
+  await performLogin(
+    DEMO_CREDENTIALS.email,
+    DEMO_CREDENTIALS.password
+  );
 };
 
 
@@ -409,6 +424,42 @@ G
 Continue with Google
 
 
+</button>
+
+<button
+  type="button"
+  onClick={handleDemoLogin}
+  disabled={loading}
+  className="
+    mt-3
+    flex
+    h-11
+    w-full
+    items-center
+    justify-center
+    gap-2
+    rounded-xl
+    border
+    border-teal-200
+    bg-teal-50
+    font-semibold
+    text-teal-700
+    transition
+    hover:bg-teal-100
+    disabled:cursor-not-allowed
+    disabled:opacity-60
+  "
+>
+  {loading ? (
+    <Loader2
+      size={18}
+      className="animate-spin"
+    />
+  ) : (
+    <LogIn size={18} />
+  )}
+
+  Demo Login
 </button>
 
 
