@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import Link from "next/link";
+import { API_URL } from "@/lib/api";
 
 import {
   ArrowRight,
@@ -27,9 +28,7 @@ import {
   YAxis,
 } from "recharts";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  "http://localhost:5000/api";
+
 
 interface Property {
   _id?: string;

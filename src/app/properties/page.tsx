@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { API_URL } from "@/lib/api";
 
 import {
   Bath,
@@ -14,10 +15,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const API_URL =
-  process.env.API_URL ??
-  process.env.NEXT_PUBLIC_API_URL ??
-  "http://localhost:5000/api";
+
 
 const PAGE_LIMIT = 9;
 
@@ -205,10 +203,7 @@ async function getProperties(
       | PropertyApiResponse
       | Property[];
 
-  /*
-    যদি backend সরাসরি array return করে:
-    [property, property]
-  */
+  
   if (Array.isArray(payload)) {
     return {
       properties: payload,
@@ -225,20 +220,7 @@ async function getProperties(
     };
   }
 
-  /*
-    Supported backend response formats:
-
-    { data: [...] }
-
-    { properties: [...] }
-
-    {
-      data: {
-        properties: [...],
-        pagination: {}
-      }
-    }
-  */
+  
   const nestedData =
     payload.data &&
     !Array.isArray(payload.data)

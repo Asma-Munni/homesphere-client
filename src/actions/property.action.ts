@@ -1,7 +1,9 @@
+import { API_URL } from "@/lib/api";
+
 export async function getProperties() {
 
   const res = await fetch(
-    "http://localhost:5000/api/properties",
+    `${API_URL}/properties`,
     {
       cache: "no-store",
     }

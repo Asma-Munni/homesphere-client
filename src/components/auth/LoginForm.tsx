@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { API_URL } from "@/lib/api";
 
 import {
   Eye,
@@ -112,7 +113,7 @@ export default function LoginForm() {
 
     // Generate backend JWT
     const tokenResponse = await fetch(
-      "http://localhost:5000/api/auth/token",
+      `${API_URL}/auth/token`,
       {
         method: "POST",
 

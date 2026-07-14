@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { API_URL } from "@/lib/api";
 
 import {
   ArrowRight,
@@ -8,10 +9,7 @@ import {
   MapPin,
 } from "lucide-react";
 
-const API_URL =
-  process.env.API_URL ??
-  process.env.NEXT_PUBLIC_API_URL ??
-  "http://localhost:5000/api";
+
 
 interface Property {
   _id: string;

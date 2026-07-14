@@ -12,12 +12,11 @@ import {
 
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { API_URL } from "@/lib/api";
 
 import { useSession } from "@/lib/auth-client";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  "http://localhost:5000/api";
+
 
 interface PropertyFormData {
   title: string;
