@@ -38,11 +38,11 @@ export const dashboardMenu = {
     },
     {
       title: "Add Property",
-      href: "/items/add",
+      href: "/properties/add",
     },
     {
       title: "Manage Property",
-      href: "/items/manage",
+      href: "/properties/manage",
     },
   ],
 };

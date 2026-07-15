@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useSession } from "@/lib/auth-client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { API_URL } from "@/lib/api";
 
 
 
@@ -26,56 +27,80 @@ useState(true);
 
 
 
-useEffect(()=>{
+const userId =
+  session?.session?.userId;
 
+useEffect(() => {
+  const fetchProperties =
+    async () => {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
 
-const fetchProperties = async()=>{
+      const token =
+        localStorage.getItem(
+          "token"
+        );
 
+      if (!token) {
+        setLoading(false);
+        router.replace("/login");
+        return;
+      }
 
-if(!session?.session?.userId){
+      try {
+        setLoading(true);
 
-return;
+        const response =
+          await fetch(
+            `${API_URL}/properties/my-properties`,
+            {
+              method: "GET",
 
-}
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
 
+              cache: "no-store",
+            }
+          );
 
+        const result =
+          await response.json();
 
-const res =
-await fetch(
+        if (
+          !response.ok ||
+          !result.success
+        ) {
+          throw new Error(
+            result.message ??
+              "Failed to load properties"
+          );
+        }
 
-`http://localhost:5000/api/properties/owner/${session.session.userId}`,
+        setProperties(
+          Array.isArray(
+            result.data
+          )
+            ? result.data
+            : []
+        );
+      } catch (error) {
+        console.error(
+          "FETCH PROPERTIES ERROR:",
+          error
+        );
 
-{
-cache:"no-store"
-}
+        setProperties([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-);
-
-
-
-const data =
-await res.json();
-
-
-
-setProperties(
-data.data
-);
-
-
-
-setLoading(false);
-
-
-};
-
-
-
-fetchProperties();
-
-
-
-},[session]);
+  void fetchProperties();
+}, [userId, router]);
 
 const handleDelete = async(
 id:string
@@ -122,7 +147,7 @@ return;
 const res =
 await fetch(
 
-`http://localhost:5000/api/properties/${id}`,
+`${API_URL}/properties/${id}`,
 
 {
 
