@@ -5,61 +5,64 @@ import { useRouter } from "next/navigation";
 
 import { authClient } from "@/lib/auth-client";
 
-
 export default function DashboardPage() {
-
   const router = useRouter();
-
 
   const {
     data: session,
     isPending,
   } = authClient.useSession();
 
-
-
-  useEffect(()=>{
-
-    if(!isPending && session?.user){
-
-      const role = session.user?.role;
-
-
-      if(role==="admin"){
-        router.push("/dashboard/admin");
-      }
-
-
-      else if(role==="property-holder"){
-        router.push("/dashboard/holder");
-      }
-
-
-      else{
-        router.push("/dashboard/tenant");
-      }
-
-    }
-
-
-  },[
-    session,
-    isPending,
-    router
-  ]);
-
-
-
-  return (
-
-    <div className="flex min-h-[50vh] items-center justify-center">
-
-      <p className="text-slate-600">
-        Loading dashboard...
-      </p>
-
-    </div>
-
+  const role = String(
+    session?.user?.role ?? "tenant"
   );
 
+  useEffect(() => {
+    if (isPending) {
+      return;
+    }
+
+    if (!session?.user) {
+      router.replace("/login");
+      return;
+    }
+
+    if (role === "admin") {
+      router.replace(
+        "/dashboard/admin"
+      );
+      return;
+    }
+
+    if (
+      role === "property-holder"
+    ) {
+      router.replace(
+        "/dashboard/holder"
+      );
+      return;
+    }
+
+    router.replace(
+      "/dashboard/tenant"
+    );
+  }, [
+    isPending,
+    session?.user,
+    role,
+    router,
+  ]);
+
+  return (
+    <main className="flex min-h-[50vh] items-center justify-center">
+      <div className="text-center">
+        <div className="mx-auto size-10 animate-spin rounded-full border-4 border-slate-200 border-t-teal-700" />
+
+        <p className="mt-4 font-medium text-slate-600">
+          Redirecting to your
+          dashboard...
+        </p>
+      </div>
+    </main>
+  );
 }

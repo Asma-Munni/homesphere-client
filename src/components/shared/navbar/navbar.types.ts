@@ -15,5 +15,5 @@ export interface NavbarUser {
 export interface NavItem {
   label: string;
   href: string;
-  icon?: LucideIcon;
+  icon: LucideIcon;
 }
