@@ -6,7 +6,7 @@ import { Toaster } from "react-hot-toast";
 
 
 import "./globals.css";
-import { NavbarUser } from "@/components/shared/navbar/navbar.types";
+
 import { AppNavbar } from "@/components/shared/navbar/page";
 import { AppFooter } from "@/components/shared/footer/page";
 
@@ -32,11 +32,6 @@ export const metadata: Metadata = {
 interface RootLayoutProps {
   children: ReactNode;
 }
-
-/*
- * Temporary mock user.
- * Better Auth যুক্ত করার পরে এটি remove করা হবে।
- */
 
 
 export default function RootLayout({

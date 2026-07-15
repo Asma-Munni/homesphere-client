@@ -5,7 +5,7 @@ import Newsletter from "@/components/home/newsletter/page";
 import PropertyCategories from "@/components/home/property-categories/page";
 import PropertyStatistics from "@/components/home/property-statistics/page";
 import WhyChooseUs from "@/components/home/why-choose-us/page";
-import { FaQ } from "react-icons/fa6";
+
 
 
 export default function Home() {

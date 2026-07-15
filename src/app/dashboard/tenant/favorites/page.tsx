@@ -2,11 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import {
-  useEffect,
-  useState,
-} from "react";
-
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import {
@@ -20,8 +16,7 @@ import {
 
 import { API_URL } from "@/lib/api";
 
-const FAVORITES_KEY =
-  "homesphere-favorites";
+const FAVORITES_KEY = "homesphere-favorites";
 
 interface Property {
   _id: string;
@@ -46,7 +41,7 @@ interface PropertyResponse {
 function getFavoriteIds(): string[] {
   try {
     const savedFavorites =
-      localStorage.getItem(
+      window.localStorage.getItem(
         FAVORITES_KEY
       );
 
@@ -54,20 +49,17 @@ function getFavoriteIds(): string[] {
       return [];
     }
 
-    const parsedFavorites =
+    const parsedFavorites: unknown =
       JSON.parse(savedFavorites);
 
-    return Array.isArray(
-      parsedFavorites
-    )
-      ? parsedFavorites.filter(
-          (
-            item
-          ): item is string =>
-            typeof item ===
-            "string"
-        )
-      : [];
+    if (!Array.isArray(parsedFavorites)) {
+      return [];
+    }
+
+    return parsedFavorites.filter(
+      (item): item is string =>
+        typeof item === "string"
+    );
   } catch (error) {
     console.error(
       "READ FAVORITES ERROR:",
@@ -78,16 +70,91 @@ function getFavoriteIds(): string[] {
   }
 }
 
+function saveFavoriteIds(
+  properties: Property[]
+) {
+  const propertyIds =
+    properties.map(
+      (property) =>
+        property._id
+    );
+
+  window.localStorage.setItem(
+    FAVORITES_KEY,
+    JSON.stringify(propertyIds)
+  );
+}
+
+async function fetchFavoriteProperties(): Promise<
+  Property[]
+> {
+  const favoriteIds =
+    getFavoriteIds();
+
+  if (favoriteIds.length === 0) {
+    return [];
+  }
+
+  const requests =
+    favoriteIds.map(
+      async (
+        propertyId
+      ): Promise<Property | null> => {
+        try {
+          const response =
+            await fetch(
+              `${API_URL}/properties/${propertyId}`,
+              {
+                cache: "no-store",
+              }
+            );
+
+          if (!response.ok) {
+            return null;
+          }
+
+          const result =
+            (await response.json()) as
+              PropertyResponse;
+
+          if (
+            !result.success ||
+            !result.data
+          ) {
+            return null;
+          }
+
+          return result.data;
+        } catch (error) {
+          console.error(
+            `FAVORITE PROPERTY ${propertyId} ERROR:`,
+            error
+          );
+
+          return null;
+        }
+      }
+    );
+
+  const results =
+    await Promise.all(requests);
+
+  return results.filter(
+    (
+      property
+    ): property is Property =>
+      property !== null
+  );
+}
+
 function formatPrice(
   price: number | string
-) {
+): string {
   const numericPrice =
     Number(price);
 
   if (
-    Number.isNaN(
-      numericPrice
-    )
+    Number.isNaN(numericPrice)
   ) {
     return `৳ ${price}`;
   }
@@ -113,94 +180,83 @@ export default function TenantFavoritesPage() {
     setError,
   ] = useState("");
 
-  const loadFavorites =
+  useEffect(() => {
+    let ignoreResult = false;
+
+    fetchFavoriteProperties()
+      .then(
+        (
+          favoriteProperties
+        ) => {
+          if (ignoreResult) {
+            return;
+          }
+
+          setProperties(
+            favoriteProperties
+          );
+
+          saveFavoriteIds(
+            favoriteProperties
+          );
+
+          setError("");
+        }
+      )
+      .catch(
+        (
+          fetchError: unknown
+        ) => {
+          if (ignoreResult) {
+            return;
+          }
+
+          console.error(
+            "LOAD FAVORITES ERROR:",
+            fetchError
+          );
+
+          setProperties([]);
+
+          setError(
+            "Could not load your favorite properties."
+          );
+        }
+      )
+      .finally(() => {
+        if (!ignoreResult) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignoreResult = true;
+    };
+  }, []);
+
+  const handleRetry =
     async () => {
       try {
         setLoading(true);
         setError("");
 
-        const favoriteIds =
-          getFavoriteIds();
-
-        if (
-          favoriteIds.length ===
-          0
-        ) {
-          setProperties([]);
-          return;
-        }
-
-        const requests =
-          favoriteIds.map(
-            async (id) => {
-              try {
-                const response =
-                  await fetch(
-                    `${API_URL}/properties/${id}`,
-                    {
-                      cache:
-                        "no-store",
-                    }
-                  );
-
-                if (
-                  !response.ok
-                ) {
-                  return null;
-                }
-
-                const result =
-                  (await response.json()) as
-                    PropertyResponse;
-
-                if (
-                  !result.success ||
-                  !result.data
-                ) {
-                  return null;
-                }
-
-                return result.data;
-              } catch {
-                return null;
-              }
-            }
-          );
-
-        const results =
-          await Promise.all(
-            requests
-          );
-
-        const validProperties =
-          results.filter(
-            (
-              property
-            ): property is Property =>
-              property !== null
-          );
+        const favoriteProperties =
+          await fetchFavoriteProperties();
 
         setProperties(
-          validProperties
+          favoriteProperties
         );
 
-        const validIds =
-          validProperties.map(
-            (property) =>
-              property._id
-          );
-
-        localStorage.setItem(
-          FAVORITES_KEY,
-          JSON.stringify(
-            validIds
-          )
+        saveFavoriteIds(
+          favoriteProperties
         );
-      } catch (error) {
+      } catch (retryError) {
         console.error(
-          "LOAD FAVORITES ERROR:",
-          error
+          "RETRY FAVORITES ERROR:",
+          retryError
         );
+
+        setProperties([]);
 
         setError(
           "Could not load your favorite properties."
@@ -210,32 +266,26 @@ export default function TenantFavoritesPage() {
       }
     };
 
-  useEffect(() => {
-    void loadFavorites();
-  }, []);
-
   const removeFavorite = (
     propertyId: string
   ) => {
-    const updatedProperties =
-      properties.filter(
-        (property) =>
-          property._id !==
-          propertyId
-      );
-
     setProperties(
-      updatedProperties
-    );
+      (
+        currentProperties
+      ) => {
+        const updatedProperties =
+          currentProperties.filter(
+            (property) =>
+              property._id !==
+              propertyId
+          );
 
-    localStorage.setItem(
-      FAVORITES_KEY,
-      JSON.stringify(
-        updatedProperties.map(
-          (property) =>
-            property._id
-        )
-      )
+        saveFavoriteIds(
+          updatedProperties
+        );
+
+        return updatedProperties;
+      }
     );
   };
 
@@ -245,27 +295,23 @@ export default function TenantFavoritesPage() {
         {/* Heading */}
 
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
-                <Heart
-                  size={24}
-                  className="fill-current"
-                />
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+              <Heart
+                size={24}
+                className="fill-current"
+              />
+            </div>
 
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">
-                  Favorite
-                  Properties
-                </h1>
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">
+                Favorite Properties
+              </h1>
 
-                <p className="mt-1 text-slate-600">
-                  View and manage
-                  the properties you
-                  saved.
-                </p>
-              </div>
+              <p className="mt-1 text-slate-600">
+                View and manage the
+                properties you saved.
+              </p>
             </div>
           </div>
 
@@ -291,9 +337,7 @@ export default function TenantFavoritesPage() {
               </p>
 
               <p className="mt-2 text-3xl font-bold text-slate-900">
-                {
-                  properties.length
-                }
+                {properties.length}
               </p>
             </div>
           )}
@@ -335,7 +379,7 @@ export default function TenantFavoritesPage() {
               <button
                 type="button"
                 onClick={() =>
-                  void loadFavorites()
+                  void handleRetry()
                 }
                 className="mt-5 rounded-xl bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800"
               >
@@ -363,10 +407,10 @@ export default function TenantFavoritesPage() {
               </h2>
 
               <p className="mt-3 max-w-md leading-7 text-slate-600">
-                Save properties
-                while exploring
-                HomeSphere and they
-                will appear here.
+                Save properties while
+                exploring HomeSphere
+                and they will appear
+                here.
               </p>
 
               <Link
@@ -390,7 +434,9 @@ export default function TenantFavoritesPage() {
             0 && (
             <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {properties.map(
-                (property) => {
+                (
+                  property
+                ) => {
                   const image =
                     property
                       .images?.[0] ??
@@ -417,9 +463,7 @@ export default function TenantFavoritesPage() {
                         ) : (
                           <div className="flex h-full items-center justify-center text-slate-400">
                             <Building2
-                              size={
-                                48
-                              }
+                              size={48}
                             />
                           </div>
                         )}
@@ -439,13 +483,11 @@ export default function TenantFavoritesPage() {
                               property._id
                             )
                           }
-                          aria-label="Remove from favorites"
+                          aria-label={`Remove ${property.title} from favorites`}
                           className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full bg-white text-red-600 shadow transition hover:bg-red-50"
                         >
                           <Trash2
-                            size={
-                              18
-                            }
+                            size={18}
                           />
                         </button>
                       </div>
@@ -460,9 +502,7 @@ export default function TenantFavoritesPage() {
                         {property.location && (
                           <p className="mt-2 flex items-center gap-2 text-sm text-slate-500">
                             <MapPin
-                              size={
-                                16
-                              }
+                              size={16}
                               className="shrink-0 text-teal-700"
                             />
 

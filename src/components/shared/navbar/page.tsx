@@ -3,11 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useState } from "react";
 
 import {
   usePathname,
@@ -44,6 +40,17 @@ interface NavbarUser {
   role?: UserRole;
 }
 
+function isUserRole(
+  role: unknown
+): role is UserRole {
+  return (
+    role === "tenant" ||
+    role ===
+      "property-holder" ||
+    role === "admin"
+  );
+}
+
 export function AppNavbar() {
   const router = useRouter();
   const pathname = usePathname();
@@ -57,72 +64,67 @@ export function AppNavbar() {
   } = useSession();
 
   const user =
-    session?.user as NavbarUser | undefined;
+    session?.user as
+      | NavbarUser
+      | undefined;
 
-  /*
-    Logged-in user-এর role না থাকলে
-    default tenant ধরা হবে।
-  */
   const role: UserRole =
-    user?.role ?? "tenant";
+    isUserRole(user?.role)
+      ? user.role
+      : "tenant";
 
-  
-  const links = useMemo(() => {
-    if (isPending) {
-      return [];
-    }
+  const links = isPending
+    ? []
+    : user
+      ? [
+          ...publicNavItems.slice(
+            0,
+            2
+          ),
+          ...roleNavItems[role],
+        ]
+      : publicNavItems;
 
-    if (!user) {
-      return publicNavItems;
-    }
+  const matchedLinks =
+    links.filter((link) => {
+      if (link.href === "/") {
+        return pathname === "/";
+      }
 
-    return [
-      ...publicNavItems.slice(0, 2),
-      ...roleNavItems[role],
-    ];
-  }, [
-    isPending,
-    user,
-    role,
-  ]);
+      return (
+        pathname === link.href ||
+        pathname.startsWith(
+          `${link.href}/`
+        )
+      );
+    });
 
- 
   const activeHref =
-    useMemo(() => {
-      const matchedLinks =
-        links.filter((link) => {
-          if (link.href === "/") {
-            return pathname === "/";
-          }
+    [...matchedLinks].sort(
+      (first, second) =>
+        second.href.length -
+        first.href.length
+    )[0]?.href;
 
-          return (
-            pathname === link.href ||
-            pathname.startsWith(
-              `${link.href}/`
-            )
-          );
-        });
-
-      return matchedLinks.sort(
-        (first, second) =>
-          second.href.length -
-          first.href.length
-      )[0]?.href;
-    }, [
-      links,
-      pathname,
-    ]);
-
-  useEffect(() => {
+  const closeMobileMenu = () => {
     setOpen(false);
-  }, [pathname]);
+  };
+
+  const toggleMobileMenu = () => {
+    setOpen(
+      (previousOpen) =>
+        !previousOpen
+    );
+  };
 
   const handleLogout =
     async () => {
       try {
+        closeMobileMenu();
+
         await signOut();
 
-        localStorage.removeItem(
+        window.localStorage.removeItem(
           "token"
         );
 
@@ -143,6 +145,9 @@ export function AppNavbar() {
 
         <Link
           href="/"
+          onClick={
+            closeMobileMenu
+          }
           aria-label="HomeSphere Home"
           className="flex items-center gap-3"
         >
@@ -167,17 +172,30 @@ export function AppNavbar() {
           </div>
         </Link>
 
-        {/* Desktop Menu */}
+        {/* Desktop navigation */}
 
-        <nav className="hidden items-center gap-7 lg:flex">
+        <nav
+          aria-label="Main navigation"
+          className="hidden items-center gap-7 lg:flex"
+        >
           {links.map((link) => {
             const isActive =
-              activeHref === link.href;
+              activeHref ===
+              link.href;
 
             return (
               <Link
-                key={link.href}
-                href={link.href}
+                key={
+                  link.href
+                }
+                href={
+                  link.href
+                }
+                aria-current={
+                  isActive
+                    ? "page"
+                    : undefined
+                }
                 className={`text-sm font-medium transition ${
                   isActive
                     ? "text-teal-700"
@@ -190,7 +208,7 @@ export function AppNavbar() {
           })}
         </nav>
 
-        {/* Desktop Right */}
+        {/* Desktop account section */}
 
         <div className="hidden items-center gap-4 lg:flex">
           {isPending ? (
@@ -203,7 +221,9 @@ export function AppNavbar() {
               >
                 {user.image ? (
                   <Image
-                    src={user.image}
+                    src={
+                      user.image
+                    }
                     alt={
                       user.name ??
                       "User"
@@ -238,12 +258,14 @@ export function AppNavbar() {
 
               <button
                 type="button"
-                onClick={
-                  handleLogout
+                onClick={() =>
+                  void handleLogout()
                 }
                 className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
-                <LogOut size={16} />
+                <LogOut
+                  size={16}
+                />
 
                 Logout
               </button>
@@ -267,15 +289,12 @@ export function AppNavbar() {
           )}
         </div>
 
-        {/* Mobile Button */}
+        {/* Mobile menu button */}
 
         <button
           type="button"
-          onClick={() =>
-            setOpen(
-              (previous) =>
-                !previous
-            )
+          onClick={
+            toggleMobileMenu
           }
           aria-label={
             open
@@ -283,30 +302,39 @@ export function AppNavbar() {
               : "Open navigation menu"
           }
           aria-expanded={open}
+          aria-controls="mobile-navigation"
           className="rounded-lg p-2 text-slate-700 transition hover:bg-slate-100 lg:hidden"
         >
           {open ? (
-            <X />
+            <X size={24} />
           ) : (
-            <Menu />
+            <Menu size={24} />
           )}
         </button>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile navigation */}
 
       {open && (
-        <div className="border-t border-slate-200 bg-white px-4 py-5 lg:hidden">
-          {/* Mobile User Profile */}
+        <div
+          id="mobile-navigation"
+          className="border-t border-slate-200 bg-white px-4 py-5 lg:hidden"
+        >
+          {/* Mobile user profile */}
 
           {user && (
             <Link
               href="/profile"
+              onClick={
+                closeMobileMenu
+              }
               className="mb-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3"
             >
               {user.image ? (
                 <Image
-                  src={user.image}
+                  src={
+                    user.image
+                  }
                   alt={
                     user.name ??
                     "User"
@@ -340,9 +368,12 @@ export function AppNavbar() {
             </Link>
           )}
 
-          {/* Mobile Links */}
+          {/* Mobile links */}
 
-          <div className="flex flex-col gap-2">
+          <nav
+            aria-label="Mobile navigation"
+            className="flex flex-col gap-2"
+          >
             {links.map((link) => {
               const Icon =
                 link.icon;
@@ -353,32 +384,48 @@ export function AppNavbar() {
 
               return (
                 <Link
-                  key={link.href}
-                  href={link.href}
+                  key={
+                    link.href
+                  }
+                  href={
+                    link.href
+                  }
+                  onClick={
+                    closeMobileMenu
+                  }
+                  aria-current={
+                    isActive
+                      ? "page"
+                      : undefined
+                  }
                   className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                     isActive
                       ? "bg-teal-50 text-teal-700"
                       : "text-slate-700 hover:bg-slate-50"
                   }`}
                 >
-                  <Icon size={18} />
+                  <Icon
+                    size={18}
+                  />
 
                   {link.label}
                 </Link>
               );
             })}
 
-            {/* Mobile Auth Buttons */}
+            {/* Mobile authentication */}
 
             {user ? (
               <button
                 type="button"
-                onClick={
-                  handleLogout
+                onClick={() =>
+                  void handleLogout()
                 }
                 className="mt-3 flex items-center gap-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-red-100"
               >
-                <LogOut size={18} />
+                <LogOut
+                  size={18}
+                />
 
                 Logout
               </button>
@@ -386,15 +433,23 @@ export function AppNavbar() {
               <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-4">
                 <Link
                   href="/login"
+                  onClick={
+                    closeMobileMenu
+                  }
                   className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
-                  <LogIn size={17} />
+                  <LogIn
+                    size={17}
+                  />
 
                   Login
                 </Link>
 
                 <Link
                   href="/register"
+                  onClick={
+                    closeMobileMenu
+                  }
                   className="flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-800"
                 >
                   <UserPlus
@@ -405,7 +460,7 @@ export function AppNavbar() {
                 </Link>
               </div>
             )}
-          </div>
+          </nav>
         </div>
       )}
     </header>

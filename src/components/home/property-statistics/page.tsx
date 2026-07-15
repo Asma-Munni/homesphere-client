@@ -4,10 +4,10 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ComponentType,
 } from "react";
 
 import Link from "next/link";
-import { API_URL } from "@/lib/api";
 
 import {
   ArrowRight,
@@ -28,7 +28,7 @@ import {
   YAxis,
 } from "recharts";
 
-
+import { API_URL } from "@/lib/api";
 
 interface Property {
   _id?: string;
@@ -39,6 +39,7 @@ interface Property {
 
 interface PropertyResponse {
   success?: boolean;
+  message?: string;
   data?: Property[];
   pagination?: {
     total?: number;
@@ -48,6 +49,52 @@ interface PropertyResponse {
 interface ChartData {
   category: string;
   properties: number;
+}
+
+interface StatisticsData {
+  properties: Property[];
+  totalProperties: number;
+}
+
+/*
+ * This function only fetches and returns data.
+ * It does not update React state.
+ */
+async function fetchStatisticsData(): Promise<StatisticsData> {
+  const response = await fetch(
+    `${API_URL}/properties?page=1&limit=100`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  const result =
+    (await response.json()) as
+      PropertyResponse;
+
+  if (
+    !response.ok ||
+    !result.success
+  ) {
+    throw new Error(
+      result.message ??
+        "Unable to load property statistics."
+    );
+  }
+
+  const propertyList =
+    Array.isArray(result.data)
+      ? result.data
+      : [];
+
+  return {
+    properties: propertyList,
+
+    totalProperties: Number(
+      result.pagination?.total ??
+        propertyList.length
+    ),
+  };
 }
 
 export default function PropertyStatistics() {
@@ -71,76 +118,98 @@ export default function PropertyStatistics() {
     setError,
   ] = useState("");
 
-  const loadProperties =
+  useEffect(() => {
+    let ignoreResult = false;
+
+    fetchStatisticsData()
+      .then((data) => {
+        if (ignoreResult) {
+          return;
+        }
+
+        setProperties(
+          data.properties
+        );
+
+        setTotalProperties(
+          data.totalProperties
+        );
+
+        setError("");
+      })
+      .catch(
+        (
+          fetchError: unknown
+        ) => {
+          if (ignoreResult) {
+            return;
+          }
+
+          console.error(
+            "STATISTICS ERROR:",
+            fetchError
+          );
+
+          setProperties([]);
+          setTotalProperties(0);
+
+          setError(
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Property statistics are currently unavailable."
+          );
+        }
+      )
+      .finally(() => {
+        if (!ignoreResult) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignoreResult = true;
+    };
+  }, []);
+
+  const handleRetry =
     async () => {
       try {
         setLoading(true);
         setError("");
 
-        const response =
-          await fetch(
-            `${API_URL}/properties?page=1&limit=50`,
-            {
-              cache: "no-store",
-            }
-          );
-
-        const result =
-          (await response.json()) as
-            PropertyResponse;
-
-        if (
-          !response.ok ||
-          !result.success
-        ) {
-          throw new Error(
-            "Unable to load property statistics"
-          );
-        }
-
-        const propertyList =
-          Array.isArray(
-            result.data
-          )
-            ? result.data
-            : [];
+        const data =
+          await fetchStatisticsData();
 
         setProperties(
-          propertyList
+          data.properties
         );
 
         setTotalProperties(
-          Number(
-            result.pagination
-              ?.total ??
-              propertyList.length
-          )
+          data.totalProperties
         );
-      } catch (error) {
+      } catch (retryError) {
         console.error(
-          "STATISTICS ERROR:",
-          error
+          "STATISTICS RETRY ERROR:",
+          retryError
         );
 
+        setProperties([]);
+        setTotalProperties(0);
+
         setError(
-          "Property statistics are currently unavailable."
+          retryError instanceof Error
+            ? retryError.message
+            : "Property statistics are currently unavailable."
         );
       } finally {
         setLoading(false);
       }
     };
 
-  useEffect(() => {
-    void loadProperties();
-  }, []);
-
   const chartData =
     useMemo<ChartData[]>(() => {
       const categoryCounts =
-        new Map<
-          string,
-          number
-        >();
+        new Map<string, number>();
 
       properties.forEach(
         (property) => {
@@ -183,10 +252,10 @@ export default function PropertyStatistics() {
     useMemo(() => {
       const locations =
         properties
-          .map(
-            (property) =>
-              property.location
-                ?.trim()
+          .map((property) =>
+            property.location
+              ?.trim()
+              .toLowerCase()
           )
           .filter(
             (
@@ -259,9 +328,9 @@ export default function PropertyStatistics() {
             <button
               type="button"
               onClick={() =>
-                void loadProperties()
+                void handleRetry()
               }
-              className="mt-5 rounded-xl bg-white px-5 py-2.5 font-semibold text-slate-900"
+              className="mt-5 rounded-xl bg-white px-5 py-2.5 font-semibold text-slate-900 transition hover:bg-slate-100"
             >
               Try Again
             </button>
@@ -440,10 +509,12 @@ export default function PropertyStatistics() {
   );
 }
 
+interface IconProps {
+  size?: number;
+}
+
 interface StatisticCardProps {
-  icon: React.ComponentType<{
-    size?: number;
-  }>;
+  icon: ComponentType<IconProps>;
   value: number | string;
   label: string;
 }

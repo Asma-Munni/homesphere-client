@@ -4,6 +4,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ComponentType,
 } from "react";
 
 import Link from "next/link";
@@ -55,6 +56,44 @@ interface CategoryChartData {
   properties: number;
 }
 
+interface StatisticsResponseData {
+  properties: Property[];
+  totalProperties: number;
+}
+
+async function fetchStatistics(): Promise<StatisticsResponseData> {
+  const response = await fetch(
+    `${API_URL}/properties?page=1&limit=1000&sort=newest`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  const result =
+    (await response.json()) as PropertyResponse;
+
+  if (!response.ok || !result.success) {
+    throw new Error(
+      result.message ??
+        "Failed to load statistics."
+    );
+  }
+
+  const propertyList =
+    Array.isArray(result.data)
+      ? result.data
+      : [];
+
+  return {
+    properties: propertyList,
+
+    totalProperties: Number(
+      result.pagination?.total ??
+        propertyList.length
+    ),
+  };
+}
+
 export default function AdminStatisticsPage() {
   const [
     properties,
@@ -76,81 +115,100 @@ export default function AdminStatisticsPage() {
     setError,
   ] = useState("");
 
-  const loadStatistics =
+  useEffect(() => {
+    let ignoreResult = false;
+
+    fetchStatistics()
+      .then((result) => {
+        if (ignoreResult) {
+          return;
+        }
+
+        setProperties(
+          result.properties
+        );
+
+        setTotalProperties(
+          result.totalProperties
+        );
+
+        setError("");
+      })
+      .catch(
+        (
+          fetchError: unknown
+        ) => {
+          if (ignoreResult) {
+            return;
+          }
+
+          console.error(
+            "ADMIN STATISTICS ERROR:",
+            fetchError
+          );
+
+          setProperties([]);
+          setTotalProperties(0);
+
+          setError(
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Could not load statistics."
+          );
+        }
+      )
+      .finally(() => {
+        if (!ignoreResult) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignoreResult = true;
+    };
+  }, []);
+
+  const handleRetry =
     async () => {
       try {
         setLoading(true);
         setError("");
 
-        const response =
-          await fetch(
-            `${API_URL}/properties?page=1&limit=1000&sort=newest`,
-            {
-              cache: "no-store",
-            }
-          );
-
         const result =
-          (await response.json()) as
-            PropertyResponse;
-
-        if (
-          !response.ok ||
-          !result.success
-        ) {
-          throw new Error(
-            result.message ??
-              "Failed to load statistics"
-          );
-        }
-
-        const propertyList =
-          Array.isArray(
-            result.data
-          )
-            ? result.data
-            : [];
+          await fetchStatistics();
 
         setProperties(
-          propertyList
+          result.properties
         );
 
         setTotalProperties(
-          Number(
-            result.pagination
-              ?.total ??
-              propertyList.length
-          )
+          result.totalProperties
         );
-      } catch (error) {
+      } catch (retryError) {
         console.error(
-          "ADMIN STATISTICS ERROR:",
-          error
+          "ADMIN STATISTICS RETRY ERROR:",
+          retryError
         );
 
+        setProperties([]);
+        setTotalProperties(0);
+
         setError(
-          error instanceof Error
-            ? error.message
-            : "Could not load statistics"
+          retryError instanceof Error
+            ? retryError.message
+            : "Could not load statistics."
         );
       } finally {
         setLoading(false);
       }
     };
 
-  useEffect(() => {
-    void loadStatistics();
-  }, []);
-
   const categoryData =
     useMemo<
       CategoryChartData[]
     >(() => {
       const categoryCounts =
-        new Map<
-          string,
-          number
-        >();
+        new Map<string, number>();
 
       properties.forEach(
         (property) => {
@@ -176,10 +234,11 @@ export default function AdminStatisticsPage() {
         .map(
           ([
             category,
-            properties,
+            propertyCount,
           ]) => ({
             category,
-            properties,
+            properties:
+              propertyCount,
           })
         )
         .sort(
@@ -193,11 +252,10 @@ export default function AdminStatisticsPage() {
     useMemo(() => {
       const locations =
         properties
-          .map(
-            (property) =>
-              property.location
-                ?.trim()
-                .toLowerCase()
+          .map((property) =>
+            property.location
+              ?.trim()
+              .toLowerCase()
           )
           .filter(
             (
@@ -206,9 +264,8 @@ export default function AdminStatisticsPage() {
               Boolean(location)
           );
 
-      return new Set(
-        locations
-      ).size;
+      return new Set(locations)
+        .size;
     }, [properties]);
 
   const availableProperties =
@@ -216,7 +273,9 @@ export default function AdminStatisticsPage() {
       return properties.filter(
         (property) =>
           !property.status ||
-          property.status.toLowerCase() ===
+          property.status
+            .trim()
+            .toLowerCase() ===
             "available"
       ).length;
     }, [properties]);
@@ -234,29 +293,24 @@ export default function AdminStatisticsPage() {
             (price) =>
               Number.isFinite(
                 price
-              ) &&
-              price > 0
+              ) && price > 0
           );
 
       if (
-        validPrices.length ===
-        0
+        validPrices.length === 0
       ) {
         return 0;
       }
 
-      const total =
+      const totalPrice =
         validPrices.reduce(
-          (
-            sum,
-            price
-          ) =>
-            sum + price,
+          (total, price) =>
+            total + price,
           0
         );
 
       return Math.round(
-        total /
+        totalPrice /
           validPrices.length
       );
     }, [properties]);
@@ -276,8 +330,7 @@ export default function AdminStatisticsPage() {
 
             <div>
               <h1 className="text-3xl font-bold text-slate-900">
-                Platform
-                Statistics
+                Platform Statistics
               </h1>
 
               <p className="mt-1 text-slate-600">
@@ -313,34 +366,33 @@ export default function AdminStatisticsPage() {
           </div>
         )}
 
-        {!loading &&
-          error && (
-            <div className="mt-8 flex min-h-80 flex-col items-center justify-center rounded-3xl border border-red-200 bg-white px-6 text-center">
-              <RefreshCcw
-                size={38}
-                className="text-red-500"
-              />
+        {!loading && error && (
+          <div className="mt-8 flex min-h-80 flex-col items-center justify-center rounded-3xl border border-red-200 bg-white px-6 text-center">
+            <RefreshCcw
+              size={38}
+              className="text-red-500"
+            />
 
-              <h2 className="mt-4 text-xl font-bold text-slate-900">
-                Could not load
-                statistics
-              </h2>
+            <h2 className="mt-4 text-xl font-bold text-slate-900">
+              Could not load
+              statistics
+            </h2>
 
-              <p className="mt-2 text-slate-600">
-                {error}
-              </p>
+            <p className="mt-2 text-slate-600">
+              {error}
+            </p>
 
-              <button
-                type="button"
-                onClick={() =>
-                  void loadStatistics()
-                }
-                className="mt-5 rounded-xl bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800"
-              >
-                Try Again
-              </button>
-            </div>
-          )}
+            <button
+              type="button"
+              onClick={() =>
+                void handleRetry()
+              }
+              className="mt-5 rounded-xl bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
 
         {!loading &&
           !error && (
@@ -383,22 +435,20 @@ export default function AdminStatisticsPage() {
                 />
               </section>
 
-              {/* Category chart */}
+              {/* Chart */}
 
               <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900">
-                    Properties by
-                    Category
-                  </h2>
+                <h2 className="text-2xl font-bold text-slate-900">
+                  Properties by
+                  Category
+                </h2>
 
-                  <p className="mt-2 text-slate-600">
-                    Distribution of
-                    property listings
-                    across available
-                    categories.
-                  </p>
-                </div>
+                <p className="mt-2 text-slate-600">
+                  Distribution of
+                  property listings
+                  across available
+                  categories.
+                </p>
 
                 {categoryData.length >
                 0 ? (
@@ -492,8 +542,7 @@ export default function AdminStatisticsPage() {
                     </h3>
 
                     <p className="mt-2 text-slate-500">
-                      Category
-                      statistics will
+                      Statistics will
                       appear after
                       properties are
                       added.
@@ -508,10 +557,12 @@ export default function AdminStatisticsPage() {
   );
 }
 
+interface IconProps {
+  size?: number;
+}
+
 interface StatisticCardProps {
-  icon: React.ComponentType<{
-    size?: number;
-  }>;
+  icon: ComponentType<IconProps>;
   label: string;
   value: number | string;
 }
