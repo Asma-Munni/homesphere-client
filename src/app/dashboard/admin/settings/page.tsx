@@ -73,13 +73,24 @@ export default function AdminSettingsPage() {
   ] = useState(false);
 
   useEffect(() => {
-    if (isPending) {
-      return;
-    }
+  if (isPending) {
+    return;
+  }
+
+  const timeoutId = window.setTimeout(() => {
+    const sessionSettings: AdminSettings = {
+      ...defaultSettings,
+
+      displayName:
+        session?.user?.name ?? "",
+
+      supportEmail:
+        session?.user?.email ?? "",
+    };
 
     try {
       const savedSettings =
-        localStorage.getItem(
+        window.localStorage.getItem(
           SETTINGS_KEY
         );
 
@@ -90,21 +101,13 @@ export default function AdminSettingsPage() {
           ) as Partial<AdminSettings>;
 
         setSettings({
-          ...defaultSettings,
+          ...sessionSettings,
           ...parsedSettings,
         });
       } else {
-        setSettings({
-          ...defaultSettings,
-
-          displayName:
-            session?.user?.name ??
-            "",
-
-          supportEmail:
-            session?.user?.email ??
-            "",
-        });
+        setSettings(
+          sessionSettings
+        );
       }
     } catch (error) {
       console.error(
@@ -112,25 +115,24 @@ export default function AdminSettingsPage() {
         error
       );
 
-      setSettings({
-        ...defaultSettings,
-
-        displayName:
-          session?.user?.name ??
-          "",
-
-        supportEmail:
-          session?.user?.email ??
-          "",
-      });
+      setSettings(
+        sessionSettings
+      );
     } finally {
       setLoading(false);
     }
-  }, [
-    isPending,
-    session?.user?.email,
-    session?.user?.name,
-  ]);
+  }, 0);
+
+  return () => {
+    window.clearTimeout(
+      timeoutId
+    );
+  };
+}, [
+  isPending,
+  session?.user?.email,
+  session?.user?.name,
+]);
 
   const handleInputChange = (
     event: ChangeEvent<

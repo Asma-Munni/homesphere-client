@@ -39,6 +39,40 @@ interface PropertyResponse {
   data?: Property[];
 }
 
+/**
+ * Fetches all properties from the server.
+ * Kept outside the component so it does not need
+ * to be added to the useEffect dependency array.
+ */
+async function fetchProperties(
+  signal?: AbortSignal
+): Promise<Property[]> {
+  const response = await fetch(
+    `${API_URL}/properties?page=1&limit=100&sort=newest`,
+    {
+      cache: "no-store",
+      signal,
+    }
+  );
+
+  const result =
+    (await response.json()) as PropertyResponse;
+
+  if (
+    !response.ok ||
+    !result.success
+  ) {
+    throw new Error(
+      result.message ??
+        "Failed to load properties"
+    );
+  }
+
+  return Array.isArray(result.data)
+    ? result.data
+    : [];
+}
+
 export default function AdminPropertiesPage() {
   const [
     properties,
@@ -55,42 +89,73 @@ export default function AdminPropertiesPage() {
     setError,
   ] = useState("");
 
-  const loadProperties =
-    async () => {
-      try {
-        setLoading(true);
-        setError("");
+  /**
+   * Runs only when the user clicks
+   * the Try Again button.
+   */
+  const handleRetry = async () => {
+    setLoading(true);
+    setError("");
 
-        const response =
-          await fetch(
-            `${API_URL}/properties?page=1&limit=100&sort=newest`,
-            {
-              cache: "no-store",
-            }
-          );
+    try {
+      const loadedProperties =
+        await fetchProperties();
 
-        const result =
-          (await response.json()) as
-            PropertyResponse;
+      setProperties(
+        loadedProperties
+      );
+    } catch (error) {
+      console.error(
+        "ADMIN PROPERTIES ERROR:",
+        error
+      );
 
-        if (
-          !response.ok ||
-          !result.success
-        ) {
-          throw new Error(
-            result.message ??
-              "Failed to load properties"
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load properties"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Loads properties when the page opens.
+   *
+   * State updates happen inside Promise
+   * callbacks instead of synchronously
+   * inside the effect body.
+   */
+  useEffect(() => {
+    const controller =
+      new AbortController();
+
+    fetchProperties(
+      controller.signal
+    )
+      .then(
+        (loadedProperties) => {
+          if (
+            controller.signal.aborted
+          ) {
+            return;
+          }
+
+          setProperties(
+            loadedProperties
           );
         }
+      )
+      .catch((error: unknown) => {
+        if (
+          error instanceof Error &&
+          error.name ===
+            "AbortError"
+        ) {
+          return;
+        }
 
-        setProperties(
-          Array.isArray(
-            result.data
-          )
-            ? result.data
-            : []
-        );
-      } catch (error) {
         console.error(
           "ADMIN PROPERTIES ERROR:",
           error
@@ -101,13 +166,18 @@ export default function AdminPropertiesPage() {
             ? error.message
             : "Failed to load properties"
         );
-      } finally {
-        setLoading(false);
-      }
-    };
+      })
+      .finally(() => {
+        if (
+          !controller.signal.aborted
+        ) {
+          setLoading(false);
+        }
+      });
 
-  useEffect(() => {
-    void loadProperties();
+    return () => {
+      controller.abort();
+    };
   }, []);
 
   return (
@@ -194,9 +264,9 @@ export default function AdminPropertiesPage() {
 
             <button
               type="button"
-              onClick={() =>
-                void loadProperties()
-              }
+              onClick={() => {
+                void handleRetry();
+              }}
               className="mt-5 rounded-xl bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800"
             >
               Try Again
